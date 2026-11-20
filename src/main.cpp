@@ -6,6 +6,10 @@
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <Wire.h>
+
+#define I2C_SDA  10  // Replace with your desired SDA pin
+#define I2C_SCL  11  // Replace with your desired SCL pin
 
 WebServer server(80);
 
@@ -26,13 +30,11 @@ String output;
 
 const char *sensor = "MLX90640";
 
-float getPixel(int x, int y)
+float getPixel(int r, int c)
 {
-  if (x <= rows && x > 0 && y <= cols && y > 0)
-  {
-    return frame[x][y];
-  }
-  return (float)0.0;
+  if (r >= 0 && r < rows && c >= 0 && c < cols)
+    return frame[r][c];
+  return 0.0f;
 }
 
 void getRaw()
@@ -77,19 +79,8 @@ void getRaw()
   avg = avg / total_pixels;
   personThreshold = humanThreshold + avg;
 
-  for (int i = 0; i < total_pixels; i++)
-  {
-    frame[row][col] = pixels[i];
-    if (col == cols)
-    {
-      col = 0;
-      row++;
-    }
-    else
-    {
-      col++;
-    }
-  }
+for (int i = 0; i < total_pixels; i++)
+  frame[i / cols][i % cols] = pixels[i];
 
   for (int r = 0; r < rows; r++)
   {
@@ -167,9 +158,16 @@ void notFound()
 
 void setup()
 {
+  Serial.begin(115200);
   while (!Serial)
     delay(10);
-  Serial.begin(9600);
+
+
+  delay(3000);
+  Serial.println("Arrancando...");
+
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(400000);   // el MLX90640 admite hasta 1 MHz; 400 kHz es un buen punto de partida
 
   Serial.println("Adafruit MLX90640");
   if (!mlx.begin(MLX90640_I2CADDR_DEFAULT, &Wire))
@@ -312,4 +310,5 @@ void loop()
   }
   server.handleClient();
   ArduinoOTA.handle();
+    
 }
